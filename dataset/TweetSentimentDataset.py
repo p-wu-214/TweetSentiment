@@ -1,5 +1,6 @@
 import torch
 from torch.utils.data import Dataset
+from config import hyper_params
 
 from sklearn.model_selection import KFold
 
@@ -9,16 +10,17 @@ import pandas as pd
 import numpy as np
 
 OFFSET_FOR_ENCODING = 4
-MAX_LENGTH = 280+5
+MAX_LENGTH = hyper_params['max_length']
 tokenizer = RobertaTokenizerFast.from_pretrained('roberta-base')
 
 def subfinder(mylist, pattern):
-    matches = []
     for i in range(len(mylist)):
         if mylist[i] == pattern[0] and mylist[i:i+len(pattern)] == pattern:
             return i, i+len(pattern)
 
 def process_data(sentiment, text, selected_text):
+    print('text is:', text)
+    print('selected_text is:', selected_text)
     start_index, end_index = subfinder(text, selected_text)
     text_in_selected_text = [0] * len(text)
     for idx in range(start_index, end_index):
@@ -42,7 +44,7 @@ def process_data(sentiment, text, selected_text):
         'start': part_of_selected_text[0],
         'end': part_of_selected_text[-1]+1,
         'input_ids': token_text['input_ids'],
-        'mask': token_text['attention_mask'],
+        'attention_mask': token_text['attention_mask'],
         'token_type_ids': token_text['token_type_ids']
     }
 
@@ -53,7 +55,15 @@ def load_data():
     del train['selected_text']
     del train['textID']
     train.dropna(inplace=True)
+    targets.dropna(inplace=True)
     return train, targets
+
+def construct_test_output(start, end):
+    actual_start = [0] * 285
+    actual_end = [0] * 285
+    actual_start[start] = 1
+    actual_end[end] = 1
+    return actual_start, actual_end
 
 class TweetSentiment(Dataset):
     def __init__(self, mode='train'):
@@ -64,16 +74,19 @@ class TweetSentiment(Dataset):
         X = self.X.iloc[index]
         Y = self.Y.iloc[index]
         obj = process_data(X['sentiment'].strip(), X['text'].strip(), Y.strip())
+        # start, end = construct_test_output(obj['start'], obj['end'])
+        start, end = obj['start'], obj['end']
         return {
             'original_tweet': X['text'].strip(),
             'sentiment':X['sentiment'].strip(),
             'selected_sentence': Y.strip(),
             'original_input_ids': obj['input_ids'],
-            'input_ids': torch.tensor(obj['input_ids'], dtype=torch.long),
-            'token_type_ids': torch.tensor(obj['token_type_ids'], dtype=torch.short),
-            'mask': torch.tensor(obj['mask'], dtype=torch.short),
-            'start': torch.tensor(obj['start'], dtype=torch.short),
-            'end': torch.tensor(obj['end'], dtype=torch.short),
+            # size should be (batch_size, sequence_length) for roberta inputs
+            'input_ids': torch.tensor([obj['input_ids']], dtype=torch.long),
+            'token_type_ids': torch.tensor([obj['token_type_ids']], dtype=torch.long),
+            'attention_mask': torch.tensor([obj['attention_mask']], dtype=torch.long),
+            'start': torch.tensor([start], dtype=torch.long),
+            'end': torch.tensor([end], dtype=torch.long),
             'tokenizer': tokenizer
         }
 
