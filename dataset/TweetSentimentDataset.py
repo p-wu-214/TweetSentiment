@@ -19,8 +19,6 @@ def subfinder(mylist, pattern):
             return i, i+len(pattern)
 
 def process_data(sentiment, text, selected_text):
-    print('text is:', text)
-    print('selected_text is:', selected_text)
     start_index, end_index = subfinder(text, selected_text)
     text_in_selected_text = [0] * len(text)
     for idx in range(start_index, end_index):
@@ -82,12 +80,11 @@ class TweetSentiment(Dataset):
             'selected_sentence': Y.strip(),
             'original_input_ids': obj['input_ids'],
             # size should be (batch_size, sequence_length) for roberta inputs
-            'input_ids': torch.tensor([obj['input_ids']], dtype=torch.long),
-            'token_type_ids': torch.tensor([obj['token_type_ids']], dtype=torch.long),
-            'attention_mask': torch.tensor([obj['attention_mask']], dtype=torch.long),
-            'start': torch.tensor([start], dtype=torch.long),
-            'end': torch.tensor([end], dtype=torch.long),
-            'tokenizer': tokenizer
+            'input_ids': torch.tensor(obj['input_ids'], dtype=torch.long),
+            'token_type_ids': torch.tensor(obj['token_type_ids'], dtype=torch.long),
+            'attention_mask': torch.tensor(obj['attention_mask'], dtype=torch.long),
+            'start': torch.tensor(start, dtype=torch.long),
+            'end': torch.tensor(end, dtype=torch.long),
         }
 
     def __len__(self):

@@ -2,6 +2,7 @@ from torch import nn
 from transformers import RobertaModel
 from config import hyper_params
 MAX_LENGTH = hyper_params['max_length']
+BATCH_SIZE = hyper_params['batch']
 
 class TweetRobertaModel(nn.Module):
     def __init__(self):
@@ -16,8 +17,7 @@ class TweetRobertaModel(nn.Module):
     def forward(self, input_ids, attention_mask, token_type_ids):
         _, X = self.roberta(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids)
         X = self.linear(X)
-        X = X.view(2, 1, MAX_LENGTH)
-        print('model x.shape: ', X.shape)
+        X = X.view(BATCH_SIZE, 2, MAX_LENGTH)
         for x in range(5):
             X[0][-1][x] = 0
             X[1][-1][x] = 0

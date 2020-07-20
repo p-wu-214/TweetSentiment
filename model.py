@@ -3,8 +3,13 @@ from model.TweetRobertaModel import TweetRobertaModel
 import torch
 from transformers import *
 import pandas as pd
+from config import hyper_params
+BATCH_SIZE = hyper_params['batch']
+MAX_LENGTH = hyper_params['max_length']
 
 def loss_fn(start_prob, end_prob, actual_start, actual_end):
+    print('start_prop:',start_prob.shape)
+    print('actual_start:',actual_start.shape)
     loss = torch.nn.CrossEntropyLoss()
     loss_start = loss(input=start_prob, target=actual_start)
     loss_end = loss(input=end_prob, target=actual_end)
@@ -13,7 +18,7 @@ def loss_fn(start_prob, end_prob, actual_start, actual_end):
 def train():
     train_dataset = TweetSentiment()
     model = TweetRobertaModel()
-    dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=4,
+    dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE,
                             shuffle=True, num_workers=0)
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9, nesterov=True)
     for epoch in range(1):
@@ -22,7 +27,8 @@ def train():
                 break
             start, end = batch['start'], batch['end']
             output = model(batch['input_ids'], batch['attention_mask'], batch['token_type_ids'])
-            loss = loss_fn(output[0], output[1], start, end)
+            print('output:', output.shape)
+            loss = loss_fn(output[:, 0], output[:, 1], start, end)
             print('loss is:', loss)
             loss.backward()
             optimizer.step()
