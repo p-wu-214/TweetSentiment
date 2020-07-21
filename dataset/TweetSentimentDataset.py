@@ -83,8 +83,8 @@ class TweetSentiment(Dataset):
             'input_ids': torch.tensor(obj['input_ids'], dtype=torch.long),
             'token_type_ids': torch.tensor(obj['token_type_ids'], dtype=torch.long),
             'attention_mask': torch.tensor(obj['attention_mask'], dtype=torch.long),
-            'start': torch.tensor(start, dtype=torch.long),
-            'end': torch.tensor(end, dtype=torch.long),
+            'start': torch.tensor(start, dtype=torch.long).unsqueeze(0),
+            'end': torch.tensor(end, dtype=torch.long).unsqueeze(0),
         }
 
     def __len__(self):
