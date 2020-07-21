@@ -1,8 +1,8 @@
 hyper_params = {
     'max_length':105,
-    'lr': 1e-4,
+    'lr': 1e-6,
     'betas': (0.9, 0.999),
-    'batch': 4,
+    'batch': 32,
     'num_workers': 0,
     'epochs': 1,
     'seed': 1234,

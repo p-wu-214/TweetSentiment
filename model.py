@@ -13,29 +13,27 @@ def loss_fn(start_prob, end_prob, actual_start, actual_end):
     loss = torch.nn.CrossEntropyLoss()
     loss_start = loss(input=start_prob, target=actual_start)
     loss_end = loss(input=end_prob, target=actual_end)
-    return loss_start + loss_end
+    return (loss_start + loss_end)/2
 
 def train():
     train_dataset = TweetSentiment()
     model = TweetRobertaModel()
     dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE,
-                            shuffle=True, num_workers=0)
-    optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9, nesterov=True)
-    for epoch in range(1):
+                            shuffle=True, num_workers=4)
+    # optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9, nesterov=True)
+    optimizer = torch.optim.Adam(model.parameters(), lr=hyper_params['lr'], betas=hyper_params['betas'], eps=1e-08)
+    for epoch in range(10):
         for batch_num, batch in enumerate(dataloader):
-            if (batch_num == 50):
-                break
             start, end = batch['start'], batch['end']
             output = model(batch['input_ids'], batch['attention_mask'], batch['token_type_ids'])
-            print('output:', output.shape)
             loss = loss_fn(output[:, 0], output[:, 1], start, end)
-            print('loss is:', loss)
+            print('epoch:', epoch, 'loss is:', loss)
             loss.backward()
             optimizer.step()
 
 def test_start_end_index():
     train_dataset = TweetSentiment()
-    for epoch in range(1):
+    for epoch in range(10):
         for batch_num, batch in enumerate(train_dataset):
             if (batch_num == 1):
                 break
