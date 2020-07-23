@@ -2,7 +2,7 @@ from dataset.TweetSentimentDataset import TweetSentiment
 from model.TweetRobertaModel import TweetRobertaModel
 import torch
 from transformers import *
-import pandas as pd
+import numpy as np
 from config import hyper_params
 BATCH_SIZE = hyper_params['batch']
 MAX_LENGTH = hyper_params['max_length']
@@ -14,22 +14,50 @@ def loss_fn(start_prob, end_prob, actual_start, actual_end):
     return (loss_start + loss_end)/2
 
 def train():
-    train_dataset = TweetSentiment()
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    train_dataset = TweetSentiment(mode='train')
+    # test_dataset = TweetSentiment(mode='test')
     model = TweetRobertaModel()
-    dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE,
+    model.to(device)
+    training_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE,
                             shuffle=True, num_workers=0)
-    # optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.9, nesterov=True)
-    optimizer = torch.optim.Adam(model.parameters(), lr=hyper_params['lr'], betas=hyper_params['betas'], eps=1e-08)
-    for epoch in range(1):
-        for batch_num, batch in enumerate(dataloader):
-            if batch_num > 10:
-                return
+    # test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=BATCH_SIZE,
+    #                         shuffle=True, num_workers=0)
+    optimizer = AdamW(model.parameters(), lr=hyper_params['lr'])
+    for epoch in range(10):
+        model.train()
+        avg_loss = []
+        start_accuracy = 0
+        end_accuracy = 0
+        for batch_num, batch in enumerate(training_dataloader):
             start, end = batch['start'], batch['end']
             pred_start, pred_end = model(batch['input_ids'], batch['attention_mask'], batch['token_type_ids'])
             loss = loss_fn(pred_start, pred_end, start, end)
-            print('epoch:', epoch, 'loss is:', loss)
             loss.backward()
             optimizer.step()
+            avg_loss.append(loss.item())
+            print('epoch:', epoch, 'loss:', loss)
+        print('epoch:', epoch, 'average loss:', np.mean(avg_loss))
+
+    # with torch.no_grad():
+    #     for epoch in range(1):
+    #         model.eval()
+    #         avg_loss = []
+    #         start_accuracy = 0
+    #         end_accuracy = 0
+    #         for batch_num, batch in enumerate(test_dataloader):
+    #             start, end = batch['start'], batch['end']
+    #             pred_start, pred_end = model(batch['input_ids'], batch['attention_mask'], batch['token_type_ids'])
+    #             loss = loss_fn(pred_start, pred_end, start, end)
+    #             avg_loss.append(loss.item())
+    #             size = pred_start.size(0)
+    #             start_accuracy += (pred_start == start).sum().item()
+    #             end_accuracy += (pred_end == end).sum().item()
+    #         print('epoch:', epoch, 'average loss:', np.mean(avg_loss))
+    #         print('epoch:', epoch, 'start accuracy:', start_accuracy / size)
+    #         print('epoch:', epoch, 'end accuracy:', end_accuracy / size)
+
 
 def test_start_end_index():
     train_dataset = TweetSentiment()

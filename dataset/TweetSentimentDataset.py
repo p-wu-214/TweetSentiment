@@ -2,8 +2,6 @@ import torch
 from torch.utils.data import Dataset
 from config import hyper_params
 
-from sklearn.model_selection import KFold
-
 from transformers import RobertaTokenizerFast
 
 import pandas as pd
@@ -12,6 +10,7 @@ import numpy as np
 OFFSET_FOR_ENCODING = 4
 MAX_LENGTH = hyper_params['max_length']
 tokenizer = RobertaTokenizerFast.from_pretrained('roberta-base')
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def subfinder(mylist, pattern):
     for i in range(len(mylist)):
@@ -46,15 +45,15 @@ def process_data(sentiment, text, selected_text):
         'token_type_ids': token_text['token_type_ids']
     }
 
-def load_data():
-    train = pd.read_csv('./data/train.csv')
-    train.replace(r'^\s*$', np.nan, regex=True, inplace=True)
-    targets = train['selected_text']
-    del train['selected_text']
-    del train['textID']
-    train.dropna(inplace=True)
+def load_data(mode):
+    data = pd.read_csv(f'./data/{mode}.csv')
+    data.replace(r'^\s*$', np.nan, regex=True, inplace=True)
+    targets = data['selected_text']
+    del data['selected_text']
+    del data['textID']
+    data.dropna(inplace=True)
     targets.dropna(inplace=True)
-    return train, targets
+    return data, targets
 
 def construct_test_output(start, end):
     actual_start = [0] * 285
@@ -65,7 +64,7 @@ def construct_test_output(start, end):
 
 class TweetSentiment(Dataset):
     def __init__(self, mode='train'):
-        self.X, self.Y = load_data()
+        self.X, self.Y = load_data(mode)
         self.max_length = max(len(s) for s in self.X['text'])
 
     def __getitem__(self, index):
@@ -80,11 +79,11 @@ class TweetSentiment(Dataset):
             'selected_sentence': Y.strip(),
             'original_input_ids': obj['input_ids'],
             # size should be (batch_size, sequence_length) for roberta inputs
-            'input_ids': torch.tensor(obj['input_ids'], dtype=torch.long),
-            'token_type_ids': torch.tensor(obj['token_type_ids'], dtype=torch.long),
-            'attention_mask': torch.tensor(obj['attention_mask'], dtype=torch.long),
-            'start': torch.tensor(start, dtype=torch.long).unsqueeze(0),
-            'end': torch.tensor(end, dtype=torch.long).unsqueeze(0),
+            'input_ids': torch.tensor(obj['input_ids'], dtype=torch.long, device=device),
+            'token_type_ids': torch.tensor(obj['token_type_ids'], dtype=torch.long, device=device),
+            'attention_mask': torch.tensor(obj['attention_mask'], dtype=torch.long, device=device),
+            'start': torch.tensor(start, dtype=torch.long, device=device).unsqueeze(0),
+            'end': torch.tensor(end, dtype=torch.long, device=device).unsqueeze(0),
         }
 
     def __len__(self):
