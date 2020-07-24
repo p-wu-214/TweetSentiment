@@ -1,5 +1,5 @@
 from dataset.TweetSentimentDataset import TweetSentiment
-from model.TweetRobertaModel import TweetRobertaModel
+from model.TweetRobertaModel import CharLevelModel
 import torch
 from transformers import *
 import numpy as np
@@ -18,7 +18,7 @@ def train():
 
     train_dataset = TweetSentiment(mode='train')
     # test_dataset = TweetSentiment(mode='test')
-    model = TweetRobertaModel()
+    model = CharLevelModel()
     model.to(device)
     training_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE,
                             shuffle=True, num_workers=0)
@@ -35,11 +35,11 @@ def train():
                 return
             start, end = batch['start'], batch['end']
             pred_start, pred_end = model(batch['original_tweet'], batch['input_ids'], batch['attention_mask'], batch['token_type_ids'], batch['offset_mapping'])
-            loss = loss_fn(pred_start, pred_end, start, end)
-            loss.backward()
-            optimizer.step()
-            avg_loss.append(loss.item())
-            print('epoch:', epoch, 'loss:', loss)
+            # loss = loss_fn(pred_start, pred_end, start, end)
+            # loss.backward()
+            # optimizer.step()
+            # avg_loss.append(loss.item())
+            # print('epoch:', epoch, 'loss:', loss)
         print('epoch:', epoch, 'average loss:', np.mean(avg_loss))
 
     # with torch.no_grad():
