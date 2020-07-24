@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import Dataset
 from config import hyper_params
 
-from transformers import RobertaTokenizerFast
+from transformers import *
 
 import pandas as pd
 import numpy as np
@@ -30,7 +30,7 @@ def process_data(sentiment, text, selected_text):
     part_of_selected_text = []
     # idx is the index of the word where the character was found to be part
     # of selected_text. offset1 and offset2 are just of the original string encoded
-    # for each token. Eg) tokenizer.encode('I am the dog'), offset[2] = (2, 3). Note we do 3:-1
+    # for each token. Eg) tokenizer.encode('I am the dog'), offset[2] = (2, 3). NOTE: offset[x] = (a,b) means token 2 maps to  Note we do 3:-1
     # because first few are <s>Sentiment</s></s> therefore we start after those useless parts
     SKIP_USELESS_TOKENS = 4
     for idx, (offset1, offset2) in enumerate(token_text['offset_mapping'][SKIP_USELESS_TOKENS:-1]):
@@ -42,7 +42,8 @@ def process_data(sentiment, text, selected_text):
         'end': part_of_selected_text[-1]+1,
         'input_ids': token_text['input_ids'],
         'attention_mask': token_text['attention_mask'],
-        'token_type_ids': token_text['token_type_ids']
+        'token_type_ids': token_text['token_type_ids'],
+        'offset_mapping': token_text['offset_mapping']
     }
 
 def load_data(mode):
@@ -78,6 +79,7 @@ class TweetSentiment(Dataset):
             'sentiment':X['sentiment'].strip(),
             'selected_sentence': Y.strip(),
             'original_input_ids': obj['input_ids'],
+            'offset_mapping': obj['offset_mapping'],
             # size should be (batch_size, sequence_length) for roberta inputs
             'input_ids': torch.tensor(obj['input_ids'], dtype=torch.long, device=device),
             'token_type_ids': torch.tensor(obj['token_type_ids'], dtype=torch.long, device=device),
