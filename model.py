@@ -34,8 +34,14 @@ def train():
             if batch_num > 0:
                 return
             start, end = batch['start'], batch['end']
-            pred_start, pred_end = model(batch['original_tweet'], batch['input_ids'], batch['attention_mask'], batch['token_type_ids'], batch['offset_mapping'])
-            # loss = loss_fn(pred_start, pred_end, start, end)
+            output = model(batch['original_tweet'], batch['input_ids'], batch['attention_mask'], batch['token_type_ids'], batch['offset_mapping'])
+            pred_start, pred_end = output.split(1, 2)
+            pred_start = pred_start.squeeze(2)
+            pred_end = pred_end.squeeze(2)
+            print(pred_start.shape)
+            print(start.shape)
+            # Gotta recreate the start, end to char level
+            loss = loss_fn(pred_start, pred_end, start, end)
             # loss.backward()
             # optimizer.step()
             # avg_loss.append(loss.item())

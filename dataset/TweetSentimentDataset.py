@@ -79,7 +79,7 @@ class TweetSentiment(Dataset):
             'sentiment':X['sentiment'].strip(),
             'selected_sentence': Y.strip(),
             'original_input_ids': obj['input_ids'],
-            'offset_mapping': obj['offset_mapping'],
+            'offset_mapping': torch.LongTensor(obj['offset_mapping']),
             # size should be (batch_size, sequence_length) for roberta inputs
             'input_ids': torch.tensor(obj['input_ids'], dtype=torch.long, device=device),
             'token_type_ids': torch.tensor(obj['token_type_ids'], dtype=torch.long, device=device),

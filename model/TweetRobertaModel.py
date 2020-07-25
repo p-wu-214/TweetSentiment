@@ -1,9 +1,11 @@
 import torch
 import transformers
 from config import hyper_params
+
 MAX_LENGTH = hyper_params['max_length']
 BATCH_SIZE = hyper_params['batch']
-
+MAX_CHAR_LENGTH = 280
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class TokenLevelModel(torch.nn.Module):
     def __init__(self):
         super(TokenLevelModel, self).__init__()
@@ -23,35 +25,40 @@ class TokenLevelModel(torch.nn.Module):
         X = self.dropout(X)
         X = self.linear(X)
         start, end = X.split(1, dim=-1)
-        char_start_prob = [0] * len(text[0])
-        char_end_prob = [0] * len(text[0])
-        flattened_start = start[0].squeeze(1)
-        flattened_end = end[0].squeeze(1)
-        SKIP_USELESS_TOKENS = 4
-        for idx, (offset1, offset2) in enumerate(offset_mapping[SKIP_USELESS_TOKENS:-1]):
-            if (offset2 - offset1) > 0:
-                for idx2 in range(offset1, offset2):
-                    char_start_prob[idx2] = flattened_start[SKIP_USELESS_TOKENS+idx]
-                    char_end_prob[idx2] = flattened_end[SKIP_USELESS_TOKENS+idx]
-        char_start_prob = torch.FloatTensor(char_start_prob)
-        char_end_prob = torch.FloatTensor(char_end_prob)
+        start_batch = []
+        end_batch = []
+        for idx1, row in enumerate(offset_mapping):
+            char_start_prob = [0] * 280
+            char_end_prob = [0] * 280
+            flattened_start = start[idx1].squeeze(1)
+            flattened_end = end[idx1].squeeze(1)
+            for idx2, (offset1, offset2) in enumerate(row):
+                if (offset2 - offset1) > 0:
+                    for idx3 in range(offset1, offset2):
+                        char_start_prob[idx3] = flattened_start[idx2]
+                        char_end_prob[idx3] = flattened_end[idx2]
 
-        return char_end_prob, char_end_prob
+            start_batch.append(char_start_prob)
+            end_batch.append(char_end_prob)
+        return torch.FloatTensor(start_batch).to(device), torch.FloatTensor(end_batch).to(device)
 
+lstm_hidden_size = 2
+lstm_num_layers = 10
 class CharLevelModel(torch.nn.Module):
     def __init__(self):
         super(CharLevelModel, self).__init__()
-        lstm_hidden_size = 6
         self.token_level_model = TokenLevelModel()
-        self.lstm = torch.nn.LSTM(280, lstm_hidden_size, num_layers=2, bidirectional=True)
-        self.linear = torch.nn.Linear(lstm_hidden_size * 2, 2)
+        self.lstm = torch.nn.LSTM(1, lstm_hidden_size, num_layers=lstm_num_layers, batch_first=True, bidirectional=True)
+        self.linear = torch.nn.Linear(4, 2)
 
     def forward(self, text, input_ids, attention_mask, token_type_ids, offset_mapping):
-        char_start_prob, char_end_prob = self.token_level_model(text, input_ids, attention_mask, token_type_ids, offset_mapping)
-        lstm_input = char_start_prob + char_end_prob
-        print(lstm_input.shape)
-        lstm_output = self.lstm(lstm_input)
-        print(lstm_output.shape)
-        return lstm_output
+        start_batch, end_batch = self.token_level_model(text, input_ids, attention_mask, token_type_ids, offset_mapping)
+        h_0 = torch.zeros(lstm_num_layers * 2, BATCH_SIZE, lstm_hidden_size).to(device)
+        c_0 = torch.zeros(lstm_num_layers * 2, BATCH_SIZE, lstm_hidden_size).to(device)
+        lstm_input = start_batch + end_batch
+        lstm_input = lstm_input.unsqueeze(2)
+        lstm_output = self.lstm(lstm_input, (h_0, c_0))
+        output = self.linear(lstm_output[0])
+        return output
 
 
