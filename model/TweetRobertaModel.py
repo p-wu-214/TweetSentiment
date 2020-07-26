@@ -1,10 +1,11 @@
 import torch
 import transformers
 from config import hyper_params
+from torch import nn
 
 MAX_LENGTH = hyper_params['max_length']
 BATCH_SIZE = hyper_params['batch']
-MAX_CHAR_LENGTH = 280
+MAX_CHAR_TWEET = 280
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class TokenLevelModel(torch.nn.Module):
     def __init__(self):
@@ -14,6 +15,7 @@ class TokenLevelModel(torch.nn.Module):
         self.roberta = transformers.RobertaModel.from_pretrained('roberta-base', config=model_config)
         self.linear = torch.nn.Linear(768 * 2, 2)
         self.dropout = torch.nn.Dropout(0.1)
+        self.softmax = torch.nn.Softmax(dim=1)
         # self.adaptiveStart = nn.AdaptiveLogSoftmaxWithLoss(in_features=MAX_LENGTH, n_classes=MAX_LENGTH,
         #                                                    cutoffs=[5, 10, 59])
         # self.adativeEnd = nn.AdaptiveLogSoftmaxWithLoss(in_features=MAX_LENGTH, n_classes=MAX_LENGTH,
@@ -25,6 +27,8 @@ class TokenLevelModel(torch.nn.Module):
         X = self.dropout(X)
         X = self.linear(X)
         start, end = X.split(1, dim=-1)
+        start = self.softmax(start)
+        end = self.softmax(end)
         start_batch = []
         end_batch = []
         for idx1, row in enumerate(offset_mapping):
@@ -40,25 +44,33 @@ class TokenLevelModel(torch.nn.Module):
 
             start_batch.append(char_start_prob)
             end_batch.append(char_end_prob)
-        return torch.FloatTensor(start_batch).to(device), torch.FloatTensor(end_batch).to(device)
+        start = torch.FloatTensor(start_batch).to(device)
+        end = torch.FloatTensor(end_batch).to(device)
+        return start, end
 
-lstm_hidden_size = 2
-lstm_num_layers = 10
+lstm_hidden_size = 40
+lstm_num_layers = 2
+h_0 = torch.zeros(lstm_num_layers * 2, BATCH_SIZE, lstm_hidden_size).to(device)
+c_0 = torch.zeros(lstm_num_layers * 2, BATCH_SIZE, lstm_hidden_size).to(device)
 class CharLevelModel(torch.nn.Module):
     def __init__(self):
         super(CharLevelModel, self).__init__()
         self.token_level_model = TokenLevelModel()
         self.lstm = torch.nn.LSTM(1, lstm_hidden_size, num_layers=lstm_num_layers, batch_first=True, bidirectional=True)
-        self.linear = torch.nn.Linear(4, 2)
+        self.dropout = nn.Dropout(0.4)
+        self.linear_start = nn.Linear(lstm_hidden_size * 2 * 280, 280)
+        self.linear_end = nn.Linear(lstm_hidden_size * 2 * 280, 280)
 
     def forward(self, text, input_ids, attention_mask, token_type_ids, offset_mapping):
-        start_batch, end_batch = self.token_level_model(text, input_ids, attention_mask, token_type_ids, offset_mapping)
-        h_0 = torch.zeros(lstm_num_layers * 2, BATCH_SIZE, lstm_hidden_size).to(device)
-        c_0 = torch.zeros(lstm_num_layers * 2, BATCH_SIZE, lstm_hidden_size).to(device)
-        lstm_input = start_batch + end_batch
-        lstm_input = lstm_input.unsqueeze(2)
-        lstm_output = self.lstm(lstm_input, (h_0, c_0))
-        output = self.linear(lstm_output[0])
-        return output
+        start, end = self.token_level_model(text, input_ids, attention_mask, token_type_ids, offset_mapping)
+        start, _ = self.lstm(start.unsqueeze(2), (h_0, c_0))
+        end, _ = self.lstm(end.unsqueeze(2), (h_0, c_0))
+        start = start.contiguous().view(BATCH_SIZE, -1)
+        end = end.contiguous().view(BATCH_SIZE, -1)
+        start = self.linear_start(start)
+        end = self.linear_end(end)
+
+
+        return start, end
 
 

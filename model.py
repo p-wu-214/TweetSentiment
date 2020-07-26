@@ -25,27 +25,25 @@ def train():
     # test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=BATCH_SIZE,
     #                         shuffle=True, num_workers=0)
     optimizer = AdamW(model.parameters(), lr=hyper_params['lr'])
-    for epoch in range(1):
+    lstm_hidden_size = 2
+    lstm_num_layers = 10
+    h = torch.zeros(lstm_num_layers * 2, BATCH_SIZE, lstm_hidden_size).to(device)
+    c = torch.zeros(lstm_num_layers * 2, BATCH_SIZE, lstm_hidden_size).to(device)
+    hidden = (h, c)
+    for epoch in range(10):
         model.train()
         avg_loss = []
         start_accuracy = 0
         end_accuracy = 0
         for batch_num, batch in enumerate(training_dataloader):
-            if batch_num > 0:
-                return
             start, end = batch['start'], batch['end']
-            output = model(batch['original_tweet'], batch['input_ids'], batch['attention_mask'], batch['token_type_ids'], batch['offset_mapping'])
-            pred_start, pred_end = output.split(1, 2)
-            pred_start = pred_start.squeeze(2)
-            pred_end = pred_end.squeeze(2)
-            print(pred_start.shape)
-            print(start.shape)
+            pred_start, pred_end = model(batch['original_tweet'], batch['input_ids'], batch['attention_mask'], batch['token_type_ids'], batch['offset_mapping'])
             # Gotta recreate the start, end to char level
-            loss = loss_fn(pred_start, pred_end, start, end)
-            # loss.backward()
-            # optimizer.step()
-            # avg_loss.append(loss.item())
-            # print('epoch:', epoch, 'loss:', loss)
+            loss = loss_fn(pred_start, pred_end, start.squeeze(1), end.squeeze(1))
+            loss.backward()
+            optimizer.step()
+            avg_loss.append(loss.item())
+            print('epoch:', epoch, 'loss:', loss)
         print('epoch:', epoch, 'average loss:', np.mean(avg_loss))
 
     # with torch.no_grad():

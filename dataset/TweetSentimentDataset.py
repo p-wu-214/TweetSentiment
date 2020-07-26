@@ -9,6 +9,7 @@ import numpy as np
 
 OFFSET_FOR_ENCODING = 4
 MAX_LENGTH = hyper_params['max_length']
+MAX_CHAR_TWEET = 280
 tokenizer = RobertaTokenizerFast.from_pretrained('roberta-base')
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -27,19 +28,22 @@ def process_data(sentiment, text, selected_text):
                                        return_token_type_ids=True, max_length=MAX_LENGTH,
                                        pad_to_max_length=True, return_offsets_mapping=True,
                                        truncation=True)
-    part_of_selected_text = []
-    # idx is the index of the word where the character was found to be part
-    # of selected_text. offset1 and offset2 are just of the original string encoded
-    # for each token. Eg) tokenizer.encode('I am the dog'), offset[2] = (2, 3). NOTE: offset[x] = (a,b) means token 2 maps to  Note we do 3:-1
-    # because first few are <s>Sentiment</s></s> therefore we start after those useless parts
-    SKIP_USELESS_TOKENS = 4
-    for idx, (offset1, offset2) in enumerate(token_text['offset_mapping'][SKIP_USELESS_TOKENS:-1]):
-        # We do sum here because if any character is a 1, that means the whole word is a 1
-        if (offset2 - offset1) > 0 and sum(text_in_selected_text[offset1: offset2]) > 0:
-            part_of_selected_text.append(idx+SKIP_USELESS_TOKENS)
+
+    start = text.find(selected_text)
+    end = start + len(selected_text)
+    # part_of_selected_text = []
+    # # idx is the index of the word where the character was found to be part
+    # # of selected_text. offset1 and offset2 are just of the original string encoded
+    # # for each token. Eg) tokenizer.encode('I am the dog'), offset[2] = (2, 3). NOTE: offset[x] = (a,b) means token 2 maps to  Note we do 3:-1
+    # # because first few are <s>Sentiment</s></s> therefore we start after those useless parts
+    # SKIP_USELESS_TOKENS = 4
+    # for idx, (offset1, offset2) in enumerate(token_text['offset_mapping'][SKIP_USELESS_TOKENS:-1]):
+    #     # We do sum here because if any character is a 1, that means the whole word is a 1
+    #     if (offset2 - offset1) > 0 and sum(text_in_selected_text[offset1: offset2]) > 0:
+    #         part_of_selected_text.append(idx+SKIP_USELESS_TOKENS)
     return {
-        'start': part_of_selected_text[0],
-        'end': part_of_selected_text[-1]+1,
+        'start': start,
+        'end': end,
         'input_ids': token_text['input_ids'],
         'attention_mask': token_text['attention_mask'],
         'token_type_ids': token_text['token_type_ids'],
