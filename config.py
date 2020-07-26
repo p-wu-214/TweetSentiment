@@ -1,6 +1,6 @@
 hyper_params = {
     'max_length':105,
-    'lr': 3e-5,
+    'lr': 1e-4,
     'betas': (0.9, 0.999),
     'batch': 16,
     'num_workers': 0,

@@ -15,7 +15,6 @@ class TokenLevelModel(torch.nn.Module):
         self.roberta = transformers.RobertaModel.from_pretrained('roberta-base', config=model_config)
         self.linear = torch.nn.Linear(768 * 2, 2)
         self.dropout = torch.nn.Dropout(0.1)
-        self.softmax = torch.nn.Softmax(dim=1)
         # self.adaptiveStart = nn.AdaptiveLogSoftmaxWithLoss(in_features=MAX_LENGTH, n_classes=MAX_LENGTH,
         #                                                    cutoffs=[5, 10, 59])
         # self.adativeEnd = nn.AdaptiveLogSoftmaxWithLoss(in_features=MAX_LENGTH, n_classes=MAX_LENGTH,
@@ -27,8 +26,6 @@ class TokenLevelModel(torch.nn.Module):
         X = self.dropout(X)
         X = self.linear(X)
         start, end = X.split(1, dim=-1)
-        start = self.softmax(start)
-        end = self.softmax(end)
         start_batch = []
         end_batch = []
         for idx1, row in enumerate(offset_mapping):
@@ -48,8 +45,8 @@ class TokenLevelModel(torch.nn.Module):
         end = torch.FloatTensor(end_batch).to(device)
         return start, end
 
-lstm_hidden_size = 40
-lstm_num_layers = 2
+lstm_hidden_size = 16
+lstm_num_layers = 10
 h_0 = torch.zeros(lstm_num_layers * 2, BATCH_SIZE, lstm_hidden_size).to(device)
 c_0 = torch.zeros(lstm_num_layers * 2, BATCH_SIZE, lstm_hidden_size).to(device)
 class CharLevelModel(torch.nn.Module):

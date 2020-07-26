@@ -33,9 +33,8 @@ def train():
     for epoch in range(10):
         model.train()
         avg_loss = []
-        start_accuracy = 0
-        end_accuracy = 0
         for batch_num, batch in enumerate(training_dataloader):
+            model.zero_grad()
             start, end = batch['start'], batch['end']
             pred_start, pred_end = model(batch['original_tweet'], batch['input_ids'], batch['attention_mask'], batch['token_type_ids'], batch['offset_mapping'])
             # Gotta recreate the start, end to char level
