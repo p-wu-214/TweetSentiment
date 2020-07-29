@@ -25,20 +25,16 @@ def train():
     # test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=BATCH_SIZE,
     #                         shuffle=True, num_workers=0)
     optimizer = AdamW(model.parameters(), lr=hyper_params['lr'])
-    lstm_hidden_size = 2
-    lstm_num_layers = 10
-    h = torch.zeros(lstm_num_layers * 2, BATCH_SIZE, lstm_hidden_size).to(device)
-    c = torch.zeros(lstm_num_layers * 2, BATCH_SIZE, lstm_hidden_size).to(device)
-    hidden = (h, c)
     for epoch in range(10):
         model.train()
         avg_loss = []
         for batch_num, batch in enumerate(training_dataloader):
+            hidden = model.init_hidden(batch['input_ids'].shape[0])
             model.zero_grad()
             start, end = batch['start'], batch['end']
-            pred_start, pred_end = model(batch['original_tweet'], batch['input_ids'], batch['attention_mask'], batch['token_type_ids'], batch['offset_mapping'])
+            X1, X2, hidden = model(batch['original_tweet'], batch['input_ids'], batch['attention_mask'], batch['token_type_ids'], batch['offset_mapping'], hidden)
             # Gotta recreate the start, end to char level
-            loss = loss_fn(pred_start, pred_end, start.squeeze(1), end.squeeze(1))
+            loss = loss_fn(X1, X2, start, end)
             loss.backward()
             optimizer.step()
             avg_loss.append(loss.item())

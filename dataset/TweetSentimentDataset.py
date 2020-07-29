@@ -9,7 +9,7 @@ import numpy as np
 
 OFFSET_FOR_ENCODING = 4
 MAX_LENGTH = hyper_params['max_length']
-MAX_CHAR_TWEET = 280
+MAX_CHAR_TWEET = 141
 tokenizer = RobertaTokenizerFast.from_pretrained('roberta-base')
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
