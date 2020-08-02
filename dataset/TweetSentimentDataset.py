@@ -75,7 +75,7 @@ class TweetSentiment(Dataset):
     def __getitem__(self, index):
         X = self.X.iloc[index]
         Y = self.Y.iloc[index]
-        obj = process_data(X['sentiment'].strip(), X['text'].strip(), Y.strip())
+        obj = process_data(X['sentiment'].strip(), X['text'], Y)
         # start, end = construct_test_output(obj['start'], obj['end'])
         start, end = obj['start'], obj['end']
         return {
