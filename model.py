@@ -30,8 +30,6 @@ def train():
         model.train()
         avg_loss = []
         for batch_num, batch in enumerate(training_dataloader):
-            if batch_num > 0:
-                return
             model.zero_grad()
             start, end = batch['start'], batch['end']
             X1, X2, hidden = model(batch['original_tweet'], batch['input_ids'], batch['attention_mask'], batch['token_type_ids'], batch['offset_mapping'], hidden)
