@@ -80,7 +80,7 @@ class TweetSentiment(Dataset):
         start, end = obj['start'], obj['end']
         return {
             'original_tweet': X['text'].strip(),
-            'sentiment':X['sentiment'].strip(),
+            'sentiment': X['sentiment'].strip(),
             'selected_sentence': Y.strip(),
             'original_input_ids': obj['input_ids'],
             'offset_mapping': torch.LongTensor(obj['offset_mapping']),
@@ -88,8 +88,8 @@ class TweetSentiment(Dataset):
             'input_ids': torch.tensor(obj['input_ids'], dtype=torch.long, device=device),
             'token_type_ids': torch.tensor(obj['token_type_ids'], dtype=torch.long, device=device),
             'attention_mask': torch.tensor(obj['attention_mask'], dtype=torch.long, device=device),
-            'start': torch.tensor(start, dtype=torch.long, device=device).unsqueeze(0),
-            'end': torch.tensor(end, dtype=torch.long, device=device).unsqueeze(0),
+            'start': torch.tensor(start, dtype=torch.long, device=device),
+            'end': torch.tensor(end, dtype=torch.long, device=device),
         }
 
     def __len__(self):

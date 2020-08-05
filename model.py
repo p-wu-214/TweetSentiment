@@ -7,12 +7,6 @@ from config import hyper_params
 BATCH_SIZE = hyper_params['batch']
 MAX_LENGTH = hyper_params['max_length']
 
-def loss_fn(start_prob, end_prob, actual_start, actual_end):
-    loss = torch.nn.CrossEntropyLoss()
-    loss_start = loss(input=start_prob, target=actual_start)
-    loss_end = loss(input=end_prob, target=actual_end)
-    return (loss_start + loss_end)/2
-
 def train():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -26,21 +20,19 @@ def train():
     #                         shuffle=True, num_workers=0)
     optimizer = AdamW(model.parameters(), lr=hyper_params['lr'])
     hidden = model.init_hidden(BATCH_SIZE)
-    for epoch in range(10):
+    for epoch in range(5):
         model.train()
         avg_loss = []
         for batch_num, batch in enumerate(training_dataloader):
             model.zero_grad()
             start, end = batch['start'], batch['end']
-            X1, X2, hidden = model(batch['original_tweet'], batch['input_ids'], batch['attention_mask'], batch['token_type_ids'], batch['offset_mapping'], hidden)
+            loss, hidden = model(batch['original_tweet'], batch['input_ids'], batch['attention_mask'], batch['token_type_ids'], batch['offset_mapping'], start, end, hidden)
             # Gotta recreate the start, end to char level
-            loss = loss_fn(X1, X2, start, end)
             hidden[0].detach_()
             hidden[1].detach_()
             loss.backward()
             optimizer.step()
             avg_loss.append(loss.item())
-            print('epoch:', epoch, 'loss:', loss)
         print('epoch:', epoch, 'average loss:', np.mean(avg_loss))
 
     # with torch.no_grad():
